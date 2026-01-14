@@ -1,1 +1,129 @@
-# Software Design
+# Diseño de Microservicios - Spring Boot
+Este repositorio contiene buenas prácticas y un **diseño de referencia** para microservicios desarrollados con **Spring Boot**, usando **REST** y/o **Kafka**, y repositorios de base de datos.
+
+---
+
+## 1. Capas internas de un microservicio
+Se recomienda separar responsabilidades claramente para mantener el código **modular, testable y mantenible**.
+
+### **Descripción de cada capa**
+| Capa | Responsabilidad |
+|------|----------------|
+| **Controller** | Recibe la petición REST o evento Kafka, valida y sanitiza datos simples, convierte DTOs y llama a los Use Cases. |
+| **Use Case** | Orquesta flujos de negocio que pueden involucrar varios Services y DAOs. Representa una acción completa del negocio. |
+| **Service** | Contiene la lógica de negocio pura, reglas de validación complejas, transformaciones de datos y orquestación parcial de acciones. |
+| **DAO Layer** | Encapsula el acceso a los repositories, mapeos a Entities/DTOs/Events y lógica relacionada con persistencia (logs, auditoría, métricas). |
+| **Repository** | Acceso CRUD a la base de datos usando Spring Data u otras implementaciones. |
+| **Messaging Layer** | Produce o consume eventos Kafka para integración asíncrona entre microservicios. |
+| **DTOs / Mappers** | Transformación entre diferentes representaciones: Entities, DTOs y Events. Cada mapper se centra en un **objeto principal** para mantener claridad. |
+
+```mermaid
+graph TD
+    A[Controller / API Layer]
+    B[Use Case / Application Layer]
+    C[Service / Business Layer]
+    D[DAO Layer]
+    F[Messaging Layer Kafka / Events]
+    A --> B
+    B --> C
+    C --> D
+    C --> F
+```
+
+---
+
+## 2. Flujo de una petición REST
+1. **Controller recibe el request**  
+   - Validaciones básicas (`@NotNull`, `@Email`, `@Size`).  
+   - Sanitización ligera (trim, mayúsculas/minúsculas).  
+   - Conversión a objeto interno o DTO.  
+
+2. **Use Case ejecuta el flujo de negocio completo**  
+   - Llama a uno o varios Services según sea necesario.  
+   - Orquesta acciones, manejo de errores y eventos.  
+
+3. **Service aplica lógica de negocio**  
+   - Validaciones complejas.  
+   - Transformaciones de datos, cálculos y reglas de negocio.  
+
+4. **DAO persiste datos**  
+   - Convierte DTOs a Entities usando mappers.  
+   - Guarda en el Repository y realiza logging/auditoría si corresponde.  
+
+5. **Repository realiza operaciones en la base de datos**  
+
+6. **Messaging Layer publica eventos**  
+   - Kafka, RabbitMQ u otro broker según arquitectura.  
+
+7. **Controller devuelve la respuesta al cliente**  
+
+---
+
+## 3. Uso de Use Cases
+Los **Use Cases** son útiles cuando un flujo de negocio involucra **varios Services**. Si solo se necesita un Service, el Use Case puede ser trivial o incluso omitido. Ejemplo:  
+
+```java
+public class ProcessPaymentUseCase {
+    private final AccountService accountService;
+    private final PaymentService paymentService;
+    private final NotificationService notificationService;
+
+    public PaymentResult execute(PaymentRequest request) {
+        accountService.validateFunds(request);
+        Payment payment = paymentService.createPayment(request);
+        notificationService.publishPaymentApproved(payment);
+        return PaymentResult.from(payment);
+    }
+}
+```
+
+## 4. Estrategia de Mappers
+Un mapper por objeto principal (Entity, DTO, Event). Métodos específicos dentro de cada mapper, indicando claramente a qué se mapea. Ejemplo:
+
+```java
+public class UserEntityMapper {
+    public UserDTO toUserDTO(UserEntity entity) { ... }
+    public UserEvent toUserEvent(UserEntity entity) { ... }
+}
+```
+
+Ventajas:
+* Claridad sobre origen y destino de cada mapeo.
+* Modularidad y testabilidad.
+* Generación incremental según necesidades del flujo de negocio.
+
+## 5. DAO Layer (Repository Wrapper)
+Encapsula repositorios y mappers, y añade lógica relacionada con persistencia (logs, auditoría, métricas). Evita que los Services hagan demasiadas cosas. Ejemplo:
+
+```java
+public class UserDAO {
+    private final UserRepository userRepository;
+    private final UserEntityMapper mapper;
+
+    public UserDTO save(UserDTO dto) {
+        UserEntity entity = mapper.toEntity(dto);
+        UserEntity saved = userRepository.save(entity);
+        log.info("User saved: {}", saved.getId());
+        return mapper.toDTO(saved);
+    }
+}
+```
+
+El Service llama al DAO para persistencia y mapeo, mientras se centra en la lógica de negocio.
+
+## 6. Beneficios de esta arquitectura
+* Claridad y separación de responsabilidades
+* Mantenibilidad y escalabilidad
+* Testabilidad independiente de cada capa
+* Flexibilidad para cambios en DB, messaging o mappers
+* Servicios delgados, Use Cases coordinadores, DAOs encapsulando persistencia
+
+## 7. Buenas prácticas
+* Mantener Controllers delgados: solo validación y conversión de datos.
+* Servicios centrados en **reglas de negocio** y **procesos individuales**.
+* Use Cases para **flujos complejos** que involucran varios Services.
+* DAO Layer para **persistencia**, **mapeos** y **lógica relacionada**.
+* Mappers específicos por objeto, con métodos claros de origen → destino.
+* Log, auditoría y métricas dentro de DAOs o componentes dedicados.
+
+Esta estructura sirve como guía para desarrollar microservicios Spring Boot limpios, escalables y fáciles de mantener en proyectos de alta complejidad.
