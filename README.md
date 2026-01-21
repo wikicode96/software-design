@@ -127,3 +127,85 @@ El Service llama al DAO para persistencia y mapeo, mientras se centra en la lóg
 * Log, auditoría y métricas dentro de DAOs o componentes dedicados.
 
 Esta estructura sirve como guía para desarrollar microservicios Spring Boot limpios, escalables y fáciles de mantener en proyectos de alta complejidad.
+
+## 8. Diseño de Use Cases
+Los Use Cases representan **acciones de negocio completas** y actúan como **orquestadores del flujo**.
+
+Reglas:
+- Un Use Case = una intención clara del negocio.
+- No contiene lógica técnica (HTTP, Kafka, DB).
+- No contiene lógica compleja inline.
+- Delegan cada acción a Services, DAOs o componentes especializados.
+
+El método `execute()` debe ser **altamente legible**, idealmente una línea por acción.
+
+```java
+public class CreatePaymentUseCase {
+
+    public PaymentResult execute(CreatePaymentCommand command) {
+        validator.validate(command);
+        Payment payment = factory.create(command);
+        paymentDAO.save(payment);
+        eventPublisher.publishPaymentCreated(payment);
+        return mapper.toResult(payment);
+    }
+}
+```
+
+## 9. Evitar Strategy Pattern como punto de entrada
+El patrón Strategy **no debe usarse como entrada principal del microservicio**.
+
+Problemas:
+- Oculta la intención de negocio.
+- Dificulta trazabilidad y testing.
+- Mezcla selección técnica con lógica de negocio.
+
+Alternativa recomendada:
+- Use Cases explícitos por acción de negocio.
+- La variabilidad se maneja **dentro del dominio**, no en la entrada.
+
+## 10. Estrategia de Testing
+
+### Pirámide de testing recomendada
+- Tests unitarios:
+  - Use Cases
+  - Services
+  - Validators / Factories
+- Contract tests:
+  - REST (OpenAPI + tests)
+  - Eventos Kafka (schema + payload)
+- Tests de integración:
+  - DAO + Repository
+  - Infraestructura real (DB, Kafka testcontainers)
+
+### Reglas
+- Ningún microservicio expone endpoints sin contrato.
+- Cambios en contratos deben romper tests, no producción.
+- Los Use Cases deben ser testeables sin levantar Spring.
+
+## 11. Uso responsable de programación reactiva
+La programación reactiva **solo debe usarse cuando aporta valor real**.
+
+Usar reactivo cuando:
+- I/O intensivo
+- Streams de datos
+- Alta concurrencia no bloqueante
+
+No usar reactivo cuando:
+- Flujos simples request/response
+- Operaciones CRUD sin carga
+- Complejidad añadida sin beneficio medible
+
+Regla:
+> Si no puedes justificarlo con métricas, no lo uses.
+
+## 12. Crecimiento de microservicios
+Los microservicios deben crecer **verticalmente** (cohesión de negocio), no horizontalmente.
+
+Se debe evitar:
+- Crear microservicios por feature.
+- Duplicar lógica de negocio en varios servicios.
+
+Se recomienda:
+- Un microservicio por dominio claro.
+- Use Cases múltiples dentro del mismo servicio.
