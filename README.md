@@ -209,3 +209,136 @@ Se debe evitar:
 Se recomienda:
 - Un microservicio por dominio claro.
 - Use Cases múltiples dentro del mismo servicio.
+
+## 13. Helpers de apoyo al Use Case
+Los Use Cases deben ser **orquestadores del flujo**, no contenedores de lógica detallada.
+Para ello, delegan responsabilidades específicas en **helpers especializados**, inyectados como dependencias.
+
+Estos helpers permiten:
+- Mantener el Use Case extremadamente legible.
+- Reutilizar lógica entre distintos Use Cases.
+- Facilitar el testing unitario de cada responsabilidad.
+- Evitar Services o Use Cases sobredimensionados.
+
+### Validators
+Responsabilidad:
+- Validaciones de negocio complejas.
+- Reglas que pueden cambiar con el tiempo.
+- Comprobaciones previas a la ejecución del flujo.
+
+No deben:
+- Acceder a infraestructura.
+- Llamar a repositorios directamente (salvo reglas justificadas).
+
+```java
+public class PaymentValidator {
+    public void validate(CreatePaymentCommand command) {
+        validateAmount(command);
+        validateCurrency(command);
+    }
+}
+```
+
+### Factories
+Responsabilidad:
+- Construcción de entidades o agregados.
+- Garantizar invariantes del dominio.
+- Centralizar la lógica de creación.
+
+Beneficio:
+- El Use Case no “sabe” cómo se construye un objeto.
+
+```java
+public class PaymentFactory {
+    public Payment create(CreatePaymentCommand command) {
+        return new Payment(
+            UUID.randomUUID().toString(),
+            command.accountId(),
+            command.amount(),
+            Instant.now()
+        );
+    }
+}
+```
+
+### Mappers
+Responsabilidad:
+- Transformar entre capas (DTO ↔ Domain ↔ Event).
+- No contienen lógica de negocio.
+
+Regla:
+- Un mapper por objeto principal.
+
+### Policy / Rule Objects
+Responsabilidad:
+- Encapsular reglas de decisión complejas.
+- Evitar `if/else` grandes en Services o Use Cases.
+
+Ejemplos:
+- Cálculo de comisiones.
+- Decisión de elegibilidad.
+- Selección de comportamiento por reglas de negocio (NO Strategy técnica).
+
+```java
+public class CommissionPolicy {
+    public BigDecimal calculate(Payment payment) {
+        // reglas complejas aquí
+    }
+}
+```
+
+### Calculators
+Responsabilidad:
+- Cálculos financieros.
+- Fechas, intereses, penalizaciones.
+
+Beneficio:
+- Testabilidad aislada.
+- Evita lógica matemática dispersa.
+
+### Builders
+Responsabilidad:
+- Construcción incremental de objetos complejos.
+- Evitar constructores gigantes.
+
+Nota:
+- Preferir Factories cuando sea posible.
+
+### Domain Services
+Responsabilidad:
+- Lógica de negocio que involucra múltiples entidades.
+- No representan flujos completos (eso es del Use Case).
+
+Ejemplo:
+- Transferencias entre cuentas.
+
+### Gateways / Ports
+Responsabilidad:
+- Interfaces que representan dependencias externas.
+- Permiten cambiar implementación sin afectar al Use Case.
+
+Ejemplos:
+- EventPublisher
+- ExternalSystemClient
+
+### Ejemplo completo
+```java
+public class CreatePaymentUseCase {
+
+    public PaymentResult execute(CreatePaymentCommand command) {
+        validator.validate(command);
+        Payment payment = factory.create(command);
+        paymentDAO.save(payment);
+        commissionCalculator.apply(payment);
+        eventPublisher.publish(payment);
+        return mapper.toResult(payment);
+    }
+}
+```
+
+## Reglas de oro para helpers
+- Un helper = una responsabilidad clara.
+- Si un helper empieza a crecer, se divide.
+- El Use Case no contiene lógica detallada.
+- Los helpers no conocen el flujo completo.
+- Ningún helper debería necesitar conocer HTTP, Kafka o DB directamente.
