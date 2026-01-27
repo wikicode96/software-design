@@ -1,0 +1,82 @@
+# Diseño de Software
+
+## Capas
+```text
+controller
+application
+domain
+infrastructure
+```
+
+### 🧩 Controller
+Responsabilidad:
+* Recibir peticiones (HTTP / Kafka)
+* Validar formato
+* Mapear DTOs
+
+```text
+controller
+ ├── rest
+ │    ├── dto
+ │    └── mapper
+ ├── kafka
+ │    ├── event
+ │    └── mapper
+ └── grpc
+      └── mapper
+```
+
+### 🧠 Application (casos de uso)
+Responsabilidad:
+* Orquestar el flujo
+* Gestionar transacciones
+* Llamar a dominio
+* Emitir eventos
+
+```text
+application
+ ├── usecase
+ ├── mapper
+ ├── command
+ ├── result
+ └── port
+      ├── out
+      └── in
+```
+
+* `mapper` → transforma Command → Domain (VO/Entity)
+* `command` → encapsula la intención de la operación
+* `result` → lo que devuelve el UseCase
+* `port` → interfaces que representan dependencias externas (DB, Kafka, APIs externas)
+
+### 🧱 Domain
+Responsabilidad:
+* Reglas de negocio
+* Value Objects, pueden contener logica de validacion
+* Decisiones importantes
+
+```text
+domain
+ ├── vo
+ ├── service
+ └── exception
+```
+
+### 🔌 Infrastructure
+Responsabilidad:
+* Implementar repositorios
+* Kafka producers/consumers
+* APIs externas
+* JPA, config, etc.
+
+```text
+infrastructure
+ ├── persistence
+ │    ├── jpa
+ │    └── entity
+ ├── messaging
+ │    └── producer
+ │         └── event
+ ├── client
+ └── config
+```
