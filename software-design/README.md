@@ -57,7 +57,7 @@ Responsabilidad:
 
 ```text
 domain
- ├── vo
+ ├── model
  ├── service
  └── exception
 ```
@@ -80,3 +80,13 @@ infrastructure
  ├── client
  └── config
 ```
+
+## 🧪 Estrategia general de tests
+Testea comportamiento, no implementación. Cada capa se testea aislada, con mocks solo donde toca.
+
+| Capa       | Tipo de test        | Qué NO usar       | Regla mental                     |
+| ---------- | ------------------- | ----------------- | -------------------------------- |
+| Domain     | Unit test puro      | Spring, mocks, DB | muchos tests, cero mocks         |
+| UseCase    | Unit test con mocks | JPA, H2, Kafka    | tests de flujo, mocks de ports   |
+| Infra      | Integration test    | Mocks             | pocos tests, tecnología real     |
+| Controller | Unit / WebMvcTest   | Dominio real      | entrada / salida                 |

@@ -1,31 +1,40 @@
 package com.wikicode96.payment.application.usecase;
 
+import com.wikicode96.payment.application.command.ProcessPaymentCommand;
+import com.wikicode96.payment.application.mapper.PaymentMapper;
+import com.wikicode96.payment.application.port.out.PaymentRepository;
+import com.wikicode96.payment.application.port.out.UserRepository;
+import com.wikicode96.payment.application.result.PaymentResult;
+import com.wikicode96.payment.domain.exception.UserNotFoundException;
+import com.wikicode96.payment.domain.model.Payment;
+import com.wikicode96.payment.domain.model.User;
+import com.wikicode96.payment.domain.service.PaymentCalculator;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ProcessPaymentUseCase {
 
-    private final PaymentRepository repository;
+    private final PaymentRepository paymentRepository;
+    private final UserRepository userRepository;
     private final PaymentCalculator calculator;
+    private final PaymentMapper mapper;
 
-    public ProcessPaymentUseCase(PaymentRepository repository,
-                                 PaymentCalculator calculator) {
-        this.repository = repository;
+    public ProcessPaymentUseCase(PaymentRepository paymentRepository,
+                                 UserRepository userRepository,
+                                 PaymentCalculator calculator,
+                                 PaymentMapper mapper) {
+        this.paymentRepository = paymentRepository;
+        this.userRepository = userRepository;
         this.calculator = calculator;
+        this.mapper = mapper;
     }
 
     public PaymentResult execute(ProcessPaymentCommand command) {
-        // 1️⃣ Map Command → Domain (VOs si quieres)
-        String userId = command.userId();
-        var amount = command.amount();
-
-        // 2️⃣ Lógica de dominio
-        Payment payment = calculator.process(userId, amount);
-
-        // 3️⃣ Persistir resultado usando port
-        repository.save(payment);
-
-        // 4️⃣ Map Domain → Result
-        return new PaymentResult(payment.getId(), payment.getAmount());
+        User user = userRepository.findById(command.userId())
+                .orElseThrow(() -> new UserNotFoundException(command.userId()));
+        Payment payment = calculator.process(user, command.amount());
+        paymentRepository.save(payment);
+        return mapper.toPaymentResult(payment);
     }
 }
+
