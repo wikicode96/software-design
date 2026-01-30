@@ -1,13 +1,6 @@
 # Diseño de Software
 
 ## Capas
-```text
-controller
-application
-domain
-infrastructure
-```
-
 ```mermaid
 flowchart LR
 
