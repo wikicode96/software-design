@@ -1,6 +1,4 @@
 # Diseño de Software
-
-## Capas
 ```mermaid
 flowchart LR
 
@@ -20,8 +18,7 @@ flowchart LR
 
     %% ===== Domain Layer =====
     subgraph Domain["Domain"]
-        MODEL[Entities & Value Objects]
-        DS[Domain Services]
+        DS[Services]
     end
 
     %% ===== Infrastructure Layer =====
@@ -38,7 +35,6 @@ flowchart LR
     GRPC --> IN
 
     IN --> UC
-    UC --> MODEL
     UC --> DS
     UC --> OUT
 
@@ -49,6 +45,7 @@ flowchart LR
     JPA --> DB
 ```
 
+## Capas
 ### 🧩 Controller / Presentation
 Responsabilidad:
 * Recibir peticiones (HTTP / Kafka)
