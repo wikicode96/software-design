@@ -8,7 +8,55 @@ domain
 infrastructure
 ```
 
-### 🧩 Controller
+```mermaid
+flowchart LR
+
+    %% ===== Presentation Layer =====
+    subgraph Presentation["Controller / Presentation"]
+        REST[REST Controller]
+        KAFKA[Kafka Consumer]
+        GRPC[gRPC Controller]
+    end
+
+    %% ===== Application Layer =====
+    subgraph Application["Application"]
+        UC[Use Cases]
+        IN[Ports IN]
+        OUT[Ports OUT]
+    end
+
+    %% ===== Domain Layer =====
+    subgraph Domain["Domain"]
+        MODEL[Entities & Value Objects]
+        DS[Domain Services]
+    end
+
+    %% ===== Infrastructure Layer =====
+    subgraph Infrastructure["Infrastructure"]
+        DB[(Database)]
+        EXT[External Services]
+        JPA[JPA Repository]
+        PROD[Kafka Producer]
+    end
+
+    %% ===== Flow =====
+    REST --> IN
+    KAFKA --> IN
+    GRPC --> IN
+
+    IN --> UC
+    UC --> MODEL
+    UC --> DS
+    UC --> OUT
+
+    OUT --> JPA
+    OUT --> EXT
+    OUT --> PROD
+
+    JPA --> DB
+```
+
+### 🧩 Controller / Presentation
 Responsabilidad:
 * Recibir peticiones (HTTP / Kafka)
 * Validar formato
@@ -47,7 +95,7 @@ application
 * `mapper` → transforma Command → Domain (VO/Entity)
 * `command` → encapsula la intención de la operación
 * `result` → lo que devuelve el UseCase
-* `port` → interfaces que representan dependencias externas (DB, Kafka, APIs externas)
+* `port` → interfaces que conectan dependencias externas. **In** a *Controller* y **Out** a *Infrastructure*
 
 ### 🧱 Domain
 Responsabilidad:
